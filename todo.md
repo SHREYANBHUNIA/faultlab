@@ -10,3 +10,6 @@
 - [x] Create a private GitHub repository for FaultLab.
 - [x] Commit and push the current FaultLab source to GitHub.
 - [x] Confirm the remote repository URL and deployment instructions.
+- [ ] Inspect the existing commit author attribution.
+- [ ] Rewrite FaultLab commit history with the requested author identity.
+- [ ] Force-update GitHub and confirm the new visible author attribution.
