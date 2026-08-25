@@ -7,32 +7,40 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
+  ArrowUpRight,
   Bell,
   Box,
   CalendarClock,
+  Check,
   ChevronRight,
   CircleDot,
   Clock3,
   CloudCog,
   Command,
+  Copy,
   Cpu,
   Database,
   FileClock,
+  Filter,
   FlaskConical,
   Gauge,
   GitBranch,
   Layers3,
   LineChart,
   ListFilter,
+  MapPinned,
+  MoreHorizontal,
   Network,
   Pause,
   Play,
   Plus,
   RadioTower,
   RotateCcw,
+  Save,
   ServerCrash,
   Settings2,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   Square,
   Terminal,
@@ -120,6 +128,8 @@ export default function Home() {
   const [experiment, setExperiment] = useState<Experiment>(initialExperiment);
   const [draft, setDraft] = useState<Experiment>(initialExperiment);
   const [elapsed, setElapsed] = useState(23);
+  const [historyFilter, setHistoryFilter] = useState<"all" | "completed" | "aborted">("all");
+  const [guardrails, setGuardrails] = useState({ approval: true, rollback: true, quietWindow: false });
 
   useEffect(() => {
     if (runStatus !== "running") return;
@@ -141,9 +151,6 @@ export default function Home() {
 
   function activateNav(label: string) {
     setActiveNav(label);
-    if (label !== "Lab overview") {
-      toast.info(`${label} is staged for the next prototype pass`, { description: "This concept view remains anchored in the live lab overview." });
-    }
   }
 
   function openNewExperiment() {
@@ -176,6 +183,15 @@ export default function Home() {
   function abortExperiment() {
     setRunStatus("stopped");
     toast.warning("Experiment aborted", { description: "Fault injection has been removed and the target service is returning to baseline." });
+  }
+
+  function runPreset(nextExperiment: Experiment) {
+    setExperiment(nextExperiment);
+    setElapsed(0);
+    setRunStatus("running");
+    setSelectedNode(nextExperiment.target === "payments-api" ? "payments" : nextExperiment.target === "orders-worker" ? "orders" : "edge");
+    setActiveNav("Lab overview");
+    toast.success("Experiment started", { description: `${nextExperiment.failure} is now targeting ${nextExperiment.target}.` });
   }
 
   return (
@@ -214,7 +230,7 @@ export default function Home() {
 
       <main className="workspace">
         <header className="workspace-header">
-          <div className="crumbs"><span>workspaces</span><ChevronRight size={12} /><span>reliability-core</span><ChevronRight size={12} /><strong>overview</strong><span className="header-lab-code">LAB / 04</span></div>
+          <div className="crumbs"><span>workspaces</span><ChevronRight size={12} /><span>reliability-core</span><ChevronRight size={12} /><strong>{activeNav.toLowerCase()}</strong><span className="header-lab-code">LAB / 04</span></div>
           <div className="header-actions">
             <button className="icon-button" aria-label="View notifications" onClick={() => toast.info("No unresolved operator notices")}><Bell size={16} /></button>
             <button className="ghost-button" onClick={() => toast.info("Command palette", { description: "Use this surface to jump between lab actions." })}><Command /> Command</button>
@@ -222,7 +238,7 @@ export default function Home() {
           </div>
         </header>
 
-        <section className="dashboard">
+        {activeNav === "Lab overview" && <section className="dashboard">
           <div className="hero-row">
             <div>
               <div className="eyebrow"><span className="eyebrow-line" /> chaos control plane</div>
@@ -366,7 +382,48 @@ export default function Home() {
               </section>
             </div>
           </div>
-        </section>
+        </section>}
+
+        {activeNav === "Experiments" && <section className="dashboard workspace-view">
+          <div className="workspace-hero">
+            <div><div className="eyebrow"><span className="eyebrow-line" /> experiment registry</div><h1 className="view-title">Compose failure with<br />a known blast radius.</h1><p className="view-copy">Each protocol binds a target, failure mode, duration, and probability before an operator arms the run.</p></div>
+            <div className="workspace-hero-actions"><div className="time-window"><FlaskConical /> 03 protocols in lab</div><button className="primary-button" onClick={openNewExperiment}><Plus /> New experiment</button></div>
+          </div>
+          <div className="workspace-split experiments-layout">
+            <section className="panel registry-panel">
+              <div className="panel-head"><div><div className="panel-title"><ListFilter /> Experiment registry</div><div className="panel-subtitle">active, scheduled, and draft protocols</div></div><button className="panel-action" onClick={() => toast.info("Registry synced with the control plane")}>sync now</button></div>
+              <div className="registry-head"><span>protocol</span><span>target</span><span>fault</span><span>guardrail</span><span /></div>
+              <div className="registry-list">
+                <article className="registry-row running"><div><span className="registry-status live-dot" /><strong>{experiment.name}</strong><small>started 12:43 · live result stream</small></div><div><code>{experiment.target}</code></div><div><span className="fault-tag">{experiment.failure}</span><small>{experiment.latency} ms · {experiment.probability}%</small></div><div><span className="guardrail-tag"><ShieldCheck /> error budget</span></div><button className="row-action" onClick={() => activateNav("Lab overview")}><ArrowUpRight /></button></article>
+                <article className="registry-row"><div><span className="registry-status scheduled" /><strong>Orders worker termination drill</strong><small>scheduled · tomorrow 09:00</small></div><div><code>orders-worker</code></div><div><span className="fault-tag neutral">Process termination</span><small>30 s · 10%</small></div><div><span className="guardrail-tag"><ShieldCheck /> approval</span></div><button className="row-action" onClick={() => runPreset({ name: "Orders worker termination drill", target: "orders-worker", failure: "Process termination", latency: 30, duration: 30, probability: 10 })}><Play /></button></article>
+                <article className="registry-row"><div><span className="registry-status draft" /><strong>Gateway packet-loss canary</strong><small>draft · last edited 4m ago</small></div><div><code>edge-gateway</code></div><div><span className="fault-tag neutral">Packet loss</span><small>3% · 120 s</small></div><div><span className="guardrail-tag"><ShieldCheck /> rollback</span></div><button className="row-action" onClick={() => { setDraft({ name: "Gateway packet-loss canary", target: "edge-gateway", failure: "Packet loss", latency: 3, duration: 120, probability: 30 }); setModalOpen(true); }}><SlidersHorizontal /></button></article>
+              </div>
+            </section>
+            <aside className="right-stack">
+              <section className="panel recipe-panel"><div className="panel-head"><div><div className="panel-title"><Sparkles /> Fault recipes</div><div className="panel-subtitle">reversible starting points</div></div></div><div className="recipe-list"><button className="recipe-row" onClick={() => { setDraft({ name: "Dependency blackout", target: "payments-api", failure: "Dependency unavailable", latency: 100, duration: 45, probability: 50 }); setModalOpen(true); }}><ServerCrash /><span><strong>Dependency blackout</strong><small>45 sec · half traffic</small></span><ChevronRight /></button><button className="recipe-row" onClick={() => { setDraft({ name: "Database pressure probe", target: "payments-api", failure: "CPU pressure", latency: 75, duration: 90, probability: 20 }); setModalOpen(true); }}><Cpu /><span><strong>CPU pressure probe</strong><small>90 sec · 75% pressure</small></span><ChevronRight /></button><button className="recipe-row" onClick={() => { setDraft({ name: "NATS partition drill", target: "nats-stream", failure: "Network partition", latency: 0, duration: 60, probability: 100 }); setModalOpen(true); }}><Network /><span><strong>NATS partition drill</strong><small>60 sec · full isolate</small></span><ChevronRight /></button></div></section>
+              <section className="panel protocol-panel"><div className="panel-head"><div><div className="panel-title"><ShieldCheck /> Arming policy</div><div className="panel-subtitle">production sandbox</div></div></div><div className="policy-check"><Check /> error budget must remain above 99.5%</div><div className="policy-check"><Check /> automatic rollback on abort</div><div className="policy-check"><Check /> change window is open</div></section>
+            </aside>
+          </div>
+        </section>}
+
+        {activeNav === "Service map" && <section className="dashboard workspace-view">
+          <div className="workspace-hero"><div><div className="eyebrow"><span className="eyebrow-line" /> runtime dependency surface</div><h1 className="view-title">Trace every dependency<br />before it becomes a fault.</h1><p className="view-copy">Inspect service posture, latency edges, and injected failure paths across the production sandbox.</p></div><div className="workspace-hero-actions"><div className="time-window"><CircleDot /> topology current · 3s</div><button className="ghost-button" onClick={() => toast.info("Topology refresh requested")}><RotateCcw /> Refresh map</button></div></div>
+          <div className="map-workspace-grid">
+            <section className="panel full-map-panel"><div className="panel-head"><div><div className="panel-title"><MapPinned /> Live service map</div><div className="panel-subtitle">12 services · 18 dependency edges · 1 active fault path</div></div><button className="panel-action" onClick={() => toast.info("Fault path isolated: edge-gateway → payments-api → ledger-db")}>isolate fault path</button></div><div className="fault-route-strip map-route-strip"><span><i />edge-gateway</span><b className={runStatus === "running" ? "active" : ""} /><span className={runStatus === "running" ? "route-live" : ""}><i />payments-api</span><b className={runStatus === "running" ? "active" : ""} /><span><i />ledger-db</span></div><div className="topology-stage map-stage"><svg className="topology-svg" viewBox="0 0 760 300" preserveAspectRatio="none" aria-hidden="true"><path className="topology-link" d="M104 144 C 208 144, 236 80, 324 78" /><path className="topology-link" d="M104 156 C 212 160, 240 229, 325 225" /><path className="topology-link active" d="M423 78 C 506 76, 539 77, 604 77" /><path className="topology-link" d="M423 226 C 499 220, 543 218, 605 213" /><path className="topology-link" d="M378 103 C 414 138, 420 170, 380 202" /><path className="topology-link" d="M650 104 C 659 144, 659 165, 650 194" /></svg><span className={`pulse-packet ${runStatus !== "running" ? "static" : ""}`} style={{ left: "38%", top: "25%" }} />{topologyNodes.map((node) => <button key={node.id} className={`signal-node ${selectedNode === node.id ? "selected" : ""}`} style={{ left: node.x, top: node.y }} onClick={() => setSelectedNode(node.id)}><span className="node-name">{node.name}</span><span className="node-meta">{node.meta}</span><span className={`node-state ${node.status === "fault" && runStatus !== "stopped" ? "alert" : ""}`}><i className="node-state-dot" />{node.status === "fault" && runStatus !== "stopped" ? "fault injected" : "healthy"}</span></button>)}<div className="topology-key"><span className="key-item"><i className="key-mark" /> healthy</span><span className="key-item"><i className="key-mark fault" /> fault path</span></div></div></section>
+            <aside className="right-stack"><section className="panel map-inspector"><div className="panel-head"><div><div className="panel-title"><Box /> Selected service</div><div className="panel-subtitle">inspect node-level posture</div></div><button className="panel-action" onClick={() => toast.info(`${selected.name} detail pinned`)}>pin</button></div><div className="map-inspector-content"><div className="inspector-service"><div className="service-avatar"><Box /></div><div><div className="inspector-service-name">{selected.name}</div><div className="inspector-service-meta">{selected.meta}</div></div></div><div className="map-stat"><span>upstream dependencies</span><strong>02</strong></div><div className="map-stat"><span>downstream consumers</span><strong>05</strong></div><div className="map-stat alert"><span>current p95</span><strong>{selected.id === "payments" && runStatus === "running" ? "587 ms" : "48 ms"}</strong></div><button className="ghost-button full-width" onClick={() => { setDraft({ ...experiment, target: selected.name }); setModalOpen(true); }}><FlaskConical /> Target in experiment</button></div></section><section className="panel edge-panel"><div className="panel-head"><div><div className="panel-title"><GitBranch /> Critical edges</div><div className="panel-subtitle">highest latency gradients</div></div></div><div className="edge-list"><div><span>edge → payments</span><b className="alert-text">587 ms</b></div><div><span>payments → ledger</span><b>8 ms</b></div><div><span>orders → NATS</span><b>71 ms</b></div></div></section></aside>
+          </div>
+        </section>}
+
+        {activeNav === "Run history" && <section className="dashboard workspace-view">
+          <div className="workspace-hero"><div><div className="eyebrow"><span className="eyebrow-line" /> experiment evidence log</div><h1 className="view-title">Every fault leaves a<br />replayable decision trail.</h1><p className="view-copy">Review the experiment window, response, and rollback posture for every completed or aborted run.</p></div><div className="workspace-hero-actions"><div className="time-window"><Clock3 /> 27 runs · 30 days</div><button className="ghost-button" onClick={() => toast.info("History export prepared", { description: "A CSV export will be available with the connected controller." })}><Save /> Export log</button></div></div>
+          <section className="panel history-panel"><div className="panel-head"><div><div className="panel-title"><FileClock /> Run history</div><div className="panel-subtitle">immutable snapshots · 30 day retention</div></div><div className="history-filters"><Filter size={13} />{(["all", "completed", "aborted"] as const).map((filter) => <button key={filter} className={`scope-filter ${historyFilter === filter ? "active" : ""}`} onClick={() => setHistoryFilter(filter)}>{filter}</button>)}</div></div><div className="history-table-head"><span>run</span><span>fault protocol</span><span>window</span><span>result</span><span>owner</span><span /></div><div className="history-list">{(historyFilter === "all" || historyFilter === "completed") && <article className="history-row"><div><span className="history-id">RUN-0481</span><small>today · 10:12</small></div><div><strong>Ledger connection pressure</strong><small>payments-api · CPU pressure</small></div><div><code>04:00</code><small>20% sampled</small></div><div><span className="result-badge completed"><Check /> completed</span><small>baseline restored</small></div><div className="owner-mark">AM</div><button className="row-action" onClick={() => toast.info("Run RUN-0481 evidence is ready for review")}><ArrowUpRight /></button></article>}{(historyFilter === "all" || historyFilter === "aborted") && <article className="history-row"><div><span className="history-id">RUN-0479</span><small>yesterday · 16:44</small></div><div><strong>Payment path latency probe</strong><small>payments-api · Network latency</small></div><div><code>00:23</code><small>30% sampled</small></div><div><span className="result-badge aborted"><Square /> aborted</span><small>guardrail triggered</small></div><div className="owner-mark">SL</div><button className="row-action" onClick={() => { setDraft(initialExperiment); setModalOpen(true); }}><Copy /></button></article>}{(historyFilter === "all" || historyFilter === "completed") && <article className="history-row"><div><span className="history-id">RUN-0472</span><small>22 aug · 09:00</small></div><div><strong>Orders worker recycle</strong><small>orders-worker · Process termination</small></div><div><code>01:00</code><small>10% sampled</small></div><div><span className="result-badge completed"><Check /> completed</span><small>no SLO breach</small></div><div className="owner-mark">KT</div><button className="row-action" onClick={() => toast.info("Run RUN-0472 evidence is ready for review")}><ArrowUpRight /></button></article>}</div></section>
+          <div className="history-summary-grid"><section className="panel summary-panel"><div className="data-label">median recovery</div><strong>18<span> sec</span></strong><p>from injector removal to baseline p95</p></section><section className="panel summary-panel"><div className="data-label">aborted by guardrail</div><strong>03<span> / 27</span></strong><p>automatic stop before a policy breach</p></section><section className="panel summary-panel"><div className="data-label">evidence coverage</div><strong>100<span>%</span></strong><p>runs retained with a control-plane snapshot</p></section></div>
+        </section>}
+
+        {activeNav === "Settings" && <section className="dashboard workspace-view">
+          <div className="workspace-hero"><div><div className="eyebrow"><span className="eyebrow-line" /> laboratory controls</div><h1 className="view-title">Set the guardrails<br />before the chaos.</h1><p className="view-copy">Safety posture is evaluated by the controller before every fault injection reaches the environment.</p></div><div className="workspace-hero-actions"><div className="time-window"><ShieldCheck /> policy enforced</div><button className="primary-button" onClick={() => toast.success("Lab settings saved", { description: "The next experiment will use the updated safety policy." })}><Save /> Save changes</button></div></div>
+          <div className="settings-grid"><section className="panel settings-panel"><div className="panel-head"><div><div className="panel-title"><ShieldCheck /> Safety guardrails</div><div className="panel-subtitle">required checks before fault injection</div></div></div><div className="setting-rows"><label className="setting-row"><span><strong>Require operator approval</strong><small>Ask a second engineer to arm a production-sandbox experiment.</small></span><input type="checkbox" checked={guardrails.approval} onChange={(event) => setGuardrails({ ...guardrails, approval: event.target.checked })} /><i className="toggle-track" /></label><label className="setting-row"><span><strong>Automatic rollback</strong><small>Remove the injected fault immediately when an operator aborts the run.</small></span><input type="checkbox" checked={guardrails.rollback} onChange={(event) => setGuardrails({ ...guardrails, rollback: event.target.checked })} /><i className="toggle-track" /></label><label className="setting-row"><span><strong>Quiet-window enforcement</strong><small>Block new experiments outside the approved reliability change window.</small></span><input type="checkbox" checked={guardrails.quietWindow} onChange={(event) => setGuardrails({ ...guardrails, quietWindow: event.target.checked })} /><i className="toggle-track" /></label></div></section><section className="panel settings-panel"><div className="panel-head"><div><div className="panel-title"><CloudCog /> Control plane</div><div className="panel-subtitle">environment and connector posture</div></div></div><div className="settings-fields"><label><span className="form-label">target environment</span><select className="form-control" defaultValue="Production sandbox"><option>Production sandbox</option><option>Staging</option><option>Development cluster</option></select></label><label><span className="form-label">rollback timeout</span><select className="form-control" defaultValue="30 seconds"><option>30 seconds</option><option>60 seconds</option><option>120 seconds</option></select></label><label><span className="form-label">controller endpoint</span><div className="readonly-control"><Terminal /> controller.faultlab.local:4222</div></label></div></section><section className="panel integrations-panel"><div className="panel-head"><div><div className="panel-title"><Layers3 /> Connected systems</div><div className="panel-subtitle">runtime control plane dependencies</div></div><button className="panel-action" onClick={() => toast.info("All connectors are reporting normally")}>recheck</button></div><div className="integration-row"><span className="integration-icon"><Database /></span><span><strong>PostgreSQL</strong><small>experiment audit storage</small></span><b className="connection-state"><i /> online</b></div><div className="integration-row"><span className="integration-icon"><RadioTower /></span><span><strong>NATS</strong><small>controller event stream</small></span><b className="connection-state"><i /> online</b></div><div className="integration-row"><span className="integration-icon"><LineChart /></span><span><strong>Prometheus</strong><small>blast-radius telemetry</small></span><b className="connection-state"><i /> online</b></div></section></div>
+        </section>}
       </main>
 
       {modalOpen && (
